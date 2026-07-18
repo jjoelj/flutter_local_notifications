@@ -49,7 +49,7 @@ bool isValidXml(char* xml) {
   }
 }
 
-bool showNotification(NativePlugin* plugin, int id, char* xml, NativeStringMap bindings) {
+bool showNotification(NativePlugin* plugin, int id, char* xml, NativeStringMap bindings, bool suppressPopup) {
   if (!plugin->isReady) return false;
   XmlDocument doc;
   try {
@@ -62,6 +62,7 @@ bool showNotification(NativePlugin* plugin, int id, char* xml, NativeStringMap b
   notification.Tag(winrt::to_hstring(id));
   if (!plugin->hasIdentity) notification.Group(kDefaultGroup);
   notification.Data(data);
+  if (suppressPopup) notification.SuppressPopup(true);
   plugin->notifier.value().Show(notification);
   return true;
 }

@@ -94,8 +94,11 @@ FFI_PLUGIN_EXPORT bool init(
 
 /// Shows the XML as a notification with the given ID. See [updateNotification] for details on
 /// bindings.
+///
+/// When [suppressPopup] is true, the notification is delivered straight to the
+/// action center without showing a banner
 FFI_PLUGIN_EXPORT bool showNotification(
-  NativePlugin* plugin, int id, char* xml, NativeStringMap bindings
+  NativePlugin* plugin, int id, char* xml, NativeStringMap bindings, bool suppressPopup
 );
 
 /// Schedules the notification to be shown at the given time (as a [time_t]).
