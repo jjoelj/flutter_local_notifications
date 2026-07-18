@@ -93,10 +93,15 @@ NativeUpdateResult updateNotification(NativePlugin* plugin, int id, NativeString
 
 void cancelAll(NativePlugin* plugin) {
   if (!plugin->isReady) return;
-  if (plugin->hasIdentity) {
-    plugin->history.value().Clear();
-  } else {
-    plugin->history.value().Clear(plugin->aumid);
+  try {
+    const auto history = ToastNotificationManager::History();
+    if (plugin->hasIdentity) {
+      history.Clear();
+    } else {
+      history.Clear(plugin->aumid);
+    }
+  } catch (const winrt::hresult_error&) {
+    // Never let a WinRT failure cross the FFI boundary.
   }
   for (const auto notification : plugin->notifier.value().GetScheduledToastNotifications()) {
     plugin->notifier.value().RemoveFromSchedule(notification);
@@ -122,23 +127,31 @@ void cancelNotification(NativePlugin* plugin, int id) {
 
 NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* size) {
   // TODO: Get more details here
-  if (!plugin->isReady) {
+  *size = 0;
+  if (!plugin->isReady) return nullptr;
+  try {
+    // The history object cached on the plugin is apartment-affine — calling it with the
+    // wrong apartment state throws RPC_E_WRONG_THREAD, and an uncaught C++ exception
+    // here would cross the FFI boundary and abort the process. Fetch a fresh reference
+    // per call and treat any failure as "no active notifications".
+    const auto history = ToastNotificationManager::History();
+    const auto active = plugin->hasIdentity
+      ? history.GetHistory()
+      : history.GetHistory(plugin->aumid);
+    const auto result = new NativeNotificationDetails[active.Size()];
+    for (const auto notification : active) {
+      try {
+        result[*size].id = std::stoi(winrt::to_string(notification.Tag()));
+        (*size)++;
+      } catch (const std::exception&) {
+        // Tag was not set by this plugin (empty or non-numeric) — skip it.
+      }
+    }
+    return result;
+  } catch (const winrt::hresult_error&) {
     *size = 0;
     return nullptr;
   }
-  const auto active = plugin->hasIdentity
-    ? plugin->history.value().GetHistory()
-    : plugin->history.value().GetHistory(plugin->aumid);
-  *size = active.Size();
-  const auto result = new NativeNotificationDetails[*size];
-  int index = 0;
-  for (const auto notification : active) {
-    const auto tag = notification.Tag();
-    const auto tagStr = winrt::to_string(tag);
-    const auto tagInt = std::stoi(tagStr);
-    result[index++].id = tagInt;
-  }
-  return result;
 }
 
 NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* size) {
