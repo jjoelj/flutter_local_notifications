@@ -22,10 +22,14 @@ abstract class WindowsNotificationsBase
   /// Shows a notification using raw XML passed to the Windows APIs.
   ///
   /// To check if the XML is valid, use [isValidXml].
+  ///
+  /// When [suppressPopup] is true, the notification is delivered straight to the
+  /// action center without popping a banner.
   Future<void> showRawXml({
     required int id,
     required String xml,
     Map<String, String> bindings = const <String, String>{},
+    bool suppressPopup = false,
   });
 
   @override

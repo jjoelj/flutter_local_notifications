@@ -57,6 +57,7 @@ class WindowsNotificationDetails {
     this.scenario,
     this.timestamp,
     this.subtitle,
+    this.suppressPopup = false,
   });
 
   /// A list of at most five action buttons.
@@ -99,4 +100,11 @@ class WindowsNotificationDetails {
   /// while or after the notification is launched by using the binding name as
   /// the key here, and the value as any string you want.
   final Map<String, String> bindings;
+
+  /// Whether to deliver the notification straight to the action center without
+  /// popping a banner.
+  ///
+  /// Useful for silently updating an already-shown notification (same ID)
+  /// without re-alerting the user.
+  final bool suppressPopup;
 }

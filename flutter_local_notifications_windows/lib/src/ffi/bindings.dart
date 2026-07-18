@@ -123,8 +123,9 @@ class NotificationsPluginBindings {
     int id,
     ffi.Pointer<pkg_ffi.Utf8> xml,
     NativeStringMap bindings,
+    bool suppressPopup,
   ) {
-    return _showNotification(plugin, id, xml, bindings);
+    return _showNotification(plugin, id, xml, bindings, suppressPopup);
   }
 
   late final _showNotificationPtr =
@@ -135,6 +136,7 @@ class NotificationsPluginBindings {
             ffi.Int,
             ffi.Pointer<pkg_ffi.Utf8>,
             NativeStringMap,
+            ffi.Bool,
           )
         >
       >('showNotification');
@@ -145,6 +147,7 @@ class NotificationsPluginBindings {
           int,
           ffi.Pointer<pkg_ffi.Utf8>,
           NativeStringMap,
+          bool,
         )
       >();
 

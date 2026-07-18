@@ -274,6 +274,7 @@ class FlutterLocalNotificationsWindows extends WindowsNotificationsBase {
       id,
       xml.toNativeUtf8(allocator: arena),
       nativeMap,
+      notificationDetails?.suppressPopup ?? false,
     );
     if (!result) {
       throw Exception(
@@ -287,6 +288,7 @@ class FlutterLocalNotificationsWindows extends WindowsNotificationsBase {
     required int id,
     required String xml,
     Map<String, String> bindings = const <String, String>{},
+    bool suppressPopup = false,
   }) async => using((Arena arena) {
     if (!_isReady) {
       throw StateError(
@@ -298,6 +300,7 @@ class FlutterLocalNotificationsWindows extends WindowsNotificationsBase {
       id,
       xml.toNativeUtf8(allocator: arena),
       bindings.toNativeMap(arena),
+      suppressPopup,
     );
     if (!result) {
       throw ArgumentError('Flutter Local Notifications: Invalid XML');
