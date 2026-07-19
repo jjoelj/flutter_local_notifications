@@ -10,6 +10,14 @@ using winrt::Windows::Data::Xml::Dom::XmlDocument;
 
 static const winrt::hstring kDefaultGroup = L"flnpGroupNull";
 
+// A long-lived cached ToastNotifier can have its COM proxy disconnected (Show then throws
+// CO_E_OBJNOTCONNECTED, 0x800401FD). CreateToastNotifier is cheap, so mint a fresh one per Show.
+static ToastNotifier makeNotifier(NativePlugin* plugin) {
+  return plugin->hasIdentity
+    ? ToastNotificationManager::CreateToastNotifier()
+    : ToastNotificationManager::CreateToastNotifier(plugin->aumid);
+}
+
 bool hasPackageIdentity() {
   if (!IsWindows8OrGreater()) return false;
   uint32_t length = 0;
@@ -31,9 +39,6 @@ bool init(
   if (!didRegister) return false;
   plugin->hasIdentity = hasPackageIdentity();
   plugin->aumid = winrt::to_hstring(aumId);
-  plugin->notifier = plugin->hasIdentity
-    ? ToastNotificationManager::CreateToastNotifier()
-    : ToastNotificationManager::CreateToastNotifier(plugin->aumid);
   plugin->history = ToastNotificationManager::History();
   plugin->isReady = true;
   return true;
@@ -60,7 +65,7 @@ bool showNotification(NativePlugin* plugin, int id, char* xml, NativeStringMap b
     if (!plugin->hasIdentity) notification.Group(kDefaultGroup);
     notification.Data(data);
     if (suppressPopup) notification.SuppressPopup(true);
-    plugin->notifier.value().Show(notification);
+    makeNotifier(plugin).Show(notification);
     return true;
   } catch (const winrt::hresult_error&) {
     return false;
@@ -75,7 +80,7 @@ bool scheduleNotification(NativePlugin* plugin, int id, char* xml, int time) {
     const ScheduledToastNotification notification(doc, winrt::clock::from_time_t(time));
     notification.Tag(winrt::to_hstring(id));
     if (!plugin->hasIdentity) notification.Group(kDefaultGroup);
-    plugin->notifier.value().AddToSchedule(notification);
+    makeNotifier(plugin).AddToSchedule(notification);
     return true;
   } catch (const winrt::hresult_error&) {
     return false;
@@ -87,9 +92,10 @@ NativeUpdateResult updateNotification(NativePlugin* plugin, int id, NativeString
   try {
     const auto tag = winrt::to_hstring(id);
     const auto data = dataFromMap(bindings);
+    const auto notifier = makeNotifier(plugin);
     const auto result = plugin->hasIdentity
-      ? plugin->notifier.value().Update(data, tag)
-      : plugin->notifier.value().Update(data, tag, kDefaultGroup);
+      ? notifier.Update(data, tag)
+      : notifier.Update(data, tag, kDefaultGroup);
     return static_cast<NativeUpdateResult>(result);
   } catch (const winrt::hresult_error&) {
     return failed;
@@ -109,8 +115,9 @@ void cancelAll(NativePlugin* plugin) {
     // Never let a WinRT failure cross the FFI boundary.
   }
   try {
-    for (const auto notification : plugin->notifier.value().GetScheduledToastNotifications()) {
-      plugin->notifier.value().RemoveFromSchedule(notification);
+    const auto notifier = makeNotifier(plugin);
+    for (const auto notification : notifier.GetScheduledToastNotifications()) {
+      notifier.RemoveFromSchedule(notification);
     }
   } catch (const winrt::hresult_error&) {
     // Never let a WinRT failure cross the FFI boundary.
@@ -127,9 +134,10 @@ void cancelNotification(NativePlugin* plugin, int id) {
     // Toast not found
   }
   try {
-    for (const auto notification : plugin->notifier.value().GetScheduledToastNotifications()) {
+    const auto notifier = makeNotifier(plugin);
+    for (const auto notification : notifier.GetScheduledToastNotifications()) {
       if (notification.Tag() == tag) {
-        plugin->notifier.value().RemoveFromSchedule(notification);
+        notifier.RemoveFromSchedule(notification);
         return;
       }
     }
@@ -163,7 +171,7 @@ NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* si
   *size = 0;
   if (!plugin->isReady) return nullptr;
   try {
-    const auto pending = plugin->notifier.value().GetScheduledToastNotifications();
+    const auto pending = makeNotifier(plugin).GetScheduledToastNotifications();
     const auto result = new NativeNotificationDetails[pending.Size()];
     for (const auto notification : pending) {
       result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
