@@ -177,6 +177,6 @@ bool NativePlugin::registerApp(
   const string& aumid, const string& appName, const string& guid, const optional<string>& iconPath,
   NativeNotificationCallback callback
 ) {
-  UpdateRegistry(aumid, appName, guid, iconPath);
+  if (!hasPackageIdentity()) UpdateRegistry(aumid, appName, guid, iconPath);
   return RegisterCallback(guid, callback);
 }
