@@ -157,6 +157,33 @@ void UpdateRegistry(
     appInfoKey.get(), "CustomActivator", 0, REG_SZ, reinterpret_cast<const BYTE*>(clsid.c_str()),
     static_cast<uint32_t>(clsid.size() + 1 * sizeof(char))
   ));
+
+  // Register the activator CLSID as a local COM server, so the shell can start the app to
+  // deliver a click that arrives while it is closed. CustomActivator only names the CLSID;
+  // with no LocalServer32 entry there is nothing to create, and clicking a toast from
+  // Action Center launches the app (via its AUMID) without ever delivering the action.
+  //
+  // This is the registration Microsoft's DesktopNotificationManagerCompat performs.
+  ss.clear();
+  ss.str(std::string());
+  ss << R"(Software\Classes\CLSID\)" << clsid << "\\LocalServer32";
+  RegistryKey localServerKey;
+  winrt::check_win32(RegCreateKeyExA(
+    HKEY_CURRENT_USER, ss.str().c_str(), 0, nullptr, 0, KEY_WRITE, nullptr,
+    localServerKey.put(), nullptr
+  ));
+
+  {
+    wchar_t exePath[MAX_PATH] {};
+    const DWORD length = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    winrt::check_bool(length > 0 && length < MAX_PATH);
+    // Quoted so a path containing spaces survives command line parsing.
+    const std::wstring command = L"\"" + std::wstring(exePath, length) + L"\"";
+    winrt::check_win32(RegSetValueExW(
+      localServerKey.get(), nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(command.c_str()),
+      static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t))
+    ));
+  }
 }
 
 /// Register the notification activation callback factory
