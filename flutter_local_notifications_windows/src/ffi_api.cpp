@@ -65,6 +65,8 @@ bool showNotification(NativePlugin* plugin, int id, char* xml, NativeStringMap b
     if (!plugin->hasIdentity) notification.Group(kDefaultGroup);
     notification.Data(data);
     if (suppressPopup) notification.SuppressPopup(true);
+    // Refresh the activator alongside the notifier — see NativePlugin::registerActivator.
+    plugin->registerActivator();
     makeNotifier(plugin).Show(notification);
     return true;
   } catch (const winrt::hresult_error&) {

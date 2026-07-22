@@ -36,6 +36,12 @@ struct NativePlugin {
   /// A callback to run when a notification is pressed, when the app is or is not running.
   NativeNotificationCallback callback;
 
+  /// The activator CLSID, retained so the class object can be re-registered.
+  string activatorGuid;
+
+  /// Cookie from CoRegisterClassObject, needed to revoke before re-registering.
+  DWORD classRegistration = 0;
+
   NativePlugin() {}
   ~NativePlugin() {}
 
@@ -44,4 +50,13 @@ struct NativePlugin {
     const string& aumid, const string& appName, const string& guid,
     const optional<string>& iconPath, NativeNotificationCallback callback
   );
+
+  /// Revokes and re-registers the activator class object.
+  ///
+  /// Called before every Show for the same reason makeNotifier mints a fresh ToastNotifier:
+  /// a long-lived COM registration in this process stops servicing calls after a while. The
+  /// shell still finds the class registered — so it never falls back to LocalServer32 — but
+  /// the Activate call never arrives, and the click is dropped with the app merely
+  /// foregrounded.
+  bool registerActivator();
 };
