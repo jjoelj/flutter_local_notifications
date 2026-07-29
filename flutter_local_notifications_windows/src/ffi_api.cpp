@@ -159,7 +159,11 @@ NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* siz
       : history.GetHistory(plugin->aumid);
     const auto result = new NativeNotificationDetails[active.Size()];
     for (const auto notification : active) {
-      result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
+      try {
+        result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
+      } catch (const std::exception&) {
+        // A different plugin wrote this notification, ignore it
+      }
     }
     return result;
   } catch (const winrt::hresult_error&) {
@@ -176,7 +180,11 @@ NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* si
     const auto pending = makeNotifier(plugin).GetScheduledToastNotifications();
     const auto result = new NativeNotificationDetails[pending.Size()];
     for (const auto notification : pending) {
-      result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
+      try {
+        result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
+      } catch (std::exception&) {
+        // A different plugin wrote this notification, ignore it
+      }
     }
     return result;
   } catch (const winrt::hresult_error&) {
