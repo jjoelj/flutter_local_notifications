@@ -1,6 +1,7 @@
 #include <windows.h>  // <-- This must be the first Windows header
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Data.Xml.Dom.h>
+#include <memory>
 
 #include "ffi_api.h"
 #include "plugin.hpp"
@@ -33,15 +34,20 @@ bool init(
   NativePlugin* plugin, char* appName, char* aumId, char* guid, char* iconPath,
   NativeNotificationCallback callback
 ) {
-  string icon;
-  if (iconPath != nullptr) icon = string(iconPath);
-  const auto didRegister = plugin->registerApp(aumId, appName, guid, icon, callback);
-  if (!didRegister) return false;
-  plugin->hasIdentity = hasPackageIdentity();
-  plugin->aumid = winrt::to_hstring(aumId);
-  plugin->history = ToastNotificationManager::History();
-  plugin->isReady = true;
-  return true;
+  try {
+    string icon;
+    if (iconPath != nullptr) icon = string(iconPath);
+    const auto didRegister = plugin->registerApp(aumId, appName, guid, icon, callback);
+    if (!didRegister) return false;
+    plugin->hasIdentity = hasPackageIdentity();
+    plugin->aumid = winrt::to_hstring(aumId);
+    plugin->history = ToastNotificationManager::History();
+    plugin->isReady = true;
+    return true;
+  } catch (...) {
+    plugin->isReady = false;
+    return false;
+  }
 }
 
 bool isValidXml(char* xml) {
@@ -49,7 +55,7 @@ bool isValidXml(char* xml) {
   try {
     doc.LoadXml(winrt::to_hstring(xml));
     return true;
-  } catch (winrt::hresult_error error) {
+  } catch (const winrt::hresult_error&) {
     return false;
   }
 }
@@ -157,7 +163,7 @@ NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* siz
     const auto active = plugin->hasIdentity
       ? history.GetHistory()
       : history.GetHistory(plugin->aumid);
-    const auto result = new NativeNotificationDetails[active.Size()];
+    auto result = std::make_unique<NativeNotificationDetails[]>(active.Size());
     for (const auto notification : active) {
       try {
         result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
@@ -165,8 +171,8 @@ NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* siz
         // A different plugin wrote this notification, ignore it
       }
     }
-    return result;
-  } catch (const winrt::hresult_error&) {
+    return result.release();
+  } catch (...) {
     *size = 0;
     return nullptr;
   }
@@ -178,16 +184,16 @@ NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* si
   if (!plugin->isReady) return nullptr;
   try {
     const auto pending = makeNotifier(plugin).GetScheduledToastNotifications();
-    const auto result = new NativeNotificationDetails[pending.Size()];
+    auto result = std::make_unique<NativeNotificationDetails[]>(pending.Size());
     for (const auto notification : pending) {
       try {
         result[(*size)++].id = std::stoi(winrt::to_string(notification.Tag()));
-      } catch (std::exception&) {
+      } catch (const std::exception&) {
         // A different plugin wrote this notification, ignore it
       }
     }
-    return result;
-  } catch (const winrt::hresult_error&) {
+    return result.release();
+  } catch (...) {
     *size = 0;
     return nullptr;
   }
