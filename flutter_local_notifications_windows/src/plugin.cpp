@@ -157,6 +157,27 @@ void UpdateRegistry(
     appInfoKey.get(), "CustomActivator", 0, REG_SZ, reinterpret_cast<const BYTE*>(clsid.c_str()),
     static_cast<uint32_t>(clsid.size() + 1 * sizeof(char))
   ));
+
+  // HKEY_CURRENT_USER\Software\Classes\CLSID\<clsid>\LocalServer32
+  ss.clear();
+  ss.str(std::string());
+  ss << R"(Software\Classes\CLSID\)" << clsid << R"(\LocalServer32)";
+  RegistryKey localServerKey;
+  winrt::check_win32(RegCreateKeyExA(
+    HKEY_CURRENT_USER, ss.str().c_str(), 0, nullptr, 0, KEY_WRITE, nullptr, localServerKey.put(),
+    nullptr
+  ));
+
+  {
+    wchar_t exePath[MAX_PATH] {};
+    const DWORD length = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    winrt::check_bool(length > 0 && length < MAX_PATH);
+    const std::wstring command = L"\"" + std::wstring(exePath, length) + L"\"";
+    winrt::check_win32(RegSetValueExW(
+      localServerKey.get(), nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(command.c_str()),
+      static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t))
+    ));
+  }
 }
 
 /// Register the notification activation callback factory
@@ -177,6 +198,6 @@ bool NativePlugin::registerApp(
   const string& aumid, const string& appName, const string& guid, const optional<string>& iconPath,
   NativeNotificationCallback callback
 ) {
-  UpdateRegistry(aumid, appName, guid, iconPath);
+  if (!hasPackageIdentity()) UpdateRegistry(aumid, appName, guid, iconPath);
   return RegisterCallback(guid, callback);
 }
