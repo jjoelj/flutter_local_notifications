@@ -172,7 +172,9 @@ void UpdateRegistry(
     wchar_t exePath[MAX_PATH] {};
     const DWORD length = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
     winrt::check_bool(length > 0 && length < MAX_PATH);
-    const std::wstring command = L"\"" + std::wstring(exePath, length) + L"\"";
+    // Same argument as the Windows App SDK, so a process launched for a toast can tell.
+    const std::wstring command =
+      L"\"" + std::wstring(exePath, length) + L"\" ----AppNotificationActivated:";
     winrt::check_win32(RegSetValueExW(
       localServerKey.get(), nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(command.c_str()),
       static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t))
@@ -188,9 +190,11 @@ bool RegisterCallback(const std::string& guid, NativeNotificationCallback callba
   const auto factory_ref = winrt::make_self<NotificationActivationCallbackFactory>();
   const auto factory = factory_ref.get();
   factory->callback = callback;
-  winrt::check_hresult(
-    CoRegisterClassObject(rclsid, factory, CLSCTX_LOCAL_SERVER, REGCLS_MULTIPLEUSE, &registration)
-  );
+  // REGCLS_AGILE puts the factory in the neutral apartment, so activations don't depend on the
+  // registering STA thread pumping messages. Matches the Windows App SDK.
+  winrt::check_hresult(CoRegisterClassObject(
+    rclsid, factory, CLSCTX_LOCAL_SERVER, REGCLS_MULTIPLEUSE | REGCLS_AGILE, &registration
+  ));
   return true;
 }
 
