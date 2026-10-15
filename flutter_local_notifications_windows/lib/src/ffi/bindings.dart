@@ -293,19 +293,19 @@ class NotificationsPluginBindings {
         )
       >();
 
-  /// Releases the memory associated with a [NativeNotificationDetails] array.
-  void freeDetailsArray(ffi.Pointer<NativeNotificationDetails> ptr) {
-    return _freeDetailsArray(ptr);
+  /// Releases the memory associated with a [NativeNotificationDetails] array of [size] elements.
+  void freeDetailsArray(ffi.Pointer<NativeNotificationDetails> ptr, int size) {
+    return _freeDetailsArray(ptr, size);
   }
 
   late final _freeDetailsArrayPtr =
       _lookup<
         ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<NativeNotificationDetails>)
+          ffi.Void Function(ffi.Pointer<NativeNotificationDetails>, ffi.Int)
         >
       >('freeDetailsArray');
   late final _freeDetailsArray = _freeDetailsArrayPtr
-      .asFunction<void Function(ffi.Pointer<NativeNotificationDetails>)>();
+      .asFunction<void Function(ffi.Pointer<NativeNotificationDetails>, int)>();
 
   /// Releases the memory associated with a [NativeLaunchDetails].
   void freeLaunchDetails(NativeLaunchDetails details) {
@@ -341,6 +341,19 @@ final class NativeStringMap extends ffi.Struct {
 final class NativeNotificationDetails extends ffi.Struct {
   @ffi.Int()
   external int id;
+
+  /// The notification's first text element, conventionally its title. Null if absent.
+  external ffi.Pointer<pkg_ffi.Utf8> title;
+
+  /// The notification's second text element, conventionally its body. Null if absent.
+  external ffi.Pointer<pkg_ffi.Utf8> body;
+
+  /// The notification's launch argument. Null if absent.
+  external ffi.Pointer<pkg_ffi.Utf8> payload;
+
+  /// When a scheduled notification will be shown, in seconds since the epoch. 0 if not scheduled.
+  @ffi.LongLong()
+  external int scheduledTime;
 }
 
 /// How the app was launched, either by pressing on the notification or an action within it.

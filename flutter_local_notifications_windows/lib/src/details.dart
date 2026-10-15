@@ -7,6 +7,7 @@ export 'details/notification_input.dart';
 export 'details/notification_parts.dart';
 export 'details/notification_progress.dart';
 export 'details/notification_row.dart';
+export 'details/pending_notification_request.dart';
 
 /// The result of updating a notification.
 enum NotificationUpdateResult {

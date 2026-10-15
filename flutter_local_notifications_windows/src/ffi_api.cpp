@@ -150,8 +150,23 @@ void cancelNotification(NativePlugin* plugin, int id) {
   }
 }
 
+/// Fills [details] from a toast's XML: the launch argument and the first two text elements.
+/// Fields that can't be read stay null.
+static void readToastContent(
+  NativeNotificationDetails& details, const winrt::Windows::Data::Xml::Dom::XmlDocument& content
+) {
+  try {
+    const auto launch = content.DocumentElement().GetAttribute(L"launch");
+    if (!launch.empty()) details.payload = toNativeString(winrt::to_string(launch));
+    const auto texts = content.GetElementsByTagName(L"text");
+    if (texts.Size() > 0) details.title = toNativeString(winrt::to_string(texts.Item(0).InnerText()));
+    if (texts.Size() > 1) details.body = toNativeString(winrt::to_string(texts.Item(1).InnerText()));
+  } catch (const winrt::hresult_error&) {
+    // Never let a WinRT failure cross the FFI boundary
+  }
+}
+
 NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* size) {
-  // TODO: Get more details here
   *size = 0;
   if (!plugin->isReady) return nullptr;
   try {
@@ -162,9 +177,10 @@ NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* siz
     for (const auto notification : active) {
       try {
         result[*size].id = std::stoi(winrt::to_string(notification.Tag()));
+        readToastContent(result[*size], notification.Content());
         (*size)++;
-      } catch (const std::exception&) {
-        // A different plugin wrote this notification, ignore it
+      } catch (...) {
+        // A different plugin wrote this notification, or it can't be read; ignore it
       }
     }
     return result.release();
@@ -175,7 +191,6 @@ NativeNotificationDetails* getActiveNotifications(NativePlugin* plugin, int* siz
 }
 
 NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* size) {
-  // TODO: Get more details here
   *size = 0;
   if (!plugin->isReady) return nullptr;
   try {
@@ -184,9 +199,12 @@ NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* si
     for (const auto notification : pending) {
       try {
         result[*size].id = std::stoi(winrt::to_string(notification.Tag()));
+        result[*size].scheduledTime = winrt::clock::to_time_t(notification.DeliveryTime());
+        // Last: it allocates, and nothing after it can throw.
+        readToastContent(result[*size], notification.Content());
         (*size)++;
-      } catch (const std::exception&) {
-        // A different plugin wrote this notification, ignore it
+      } catch (...) {
+        // A different plugin wrote this notification, or it can't be read; ignore it
       }
     }
     return result.release();
@@ -196,7 +214,15 @@ NativeNotificationDetails* getPendingNotifications(NativePlugin* plugin, int* si
   }
 }
 
-void freeDetailsArray(NativeNotificationDetails* ptr) { delete[] ptr; }
+void freeDetailsArray(NativeNotificationDetails* ptr, int size) {
+  if (ptr == nullptr) return;
+  for (int index = 0; index < size; index++) {
+    delete[] ptr[index].title;
+    delete[] ptr[index].body;
+    delete[] ptr[index].payload;
+  }
+  delete[] ptr;
+}
 
 void freeLaunchDetails(NativeLaunchDetails details) {
   if (details.payload != nullptr) delete[] details.payload;
