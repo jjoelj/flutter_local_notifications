@@ -159,8 +159,10 @@ static void readToastContent(
     const auto launch = content.DocumentElement().GetAttribute(L"launch");
     if (!launch.empty()) details.payload = toNativeString(winrt::to_string(launch));
     const auto texts = content.GetElementsByTagName(L"text");
-    if (texts.Size() > 0) details.title = toNativeString(winrt::to_string(texts.Item(0).InnerText()));
-    if (texts.Size() > 1) details.body = toNativeString(winrt::to_string(texts.Item(1).InnerText()));
+    if (texts.Size() > 0)
+      details.title = toNativeString(winrt::to_string(texts.Item(0).InnerText()));
+    if (texts.Size() > 1)
+      details.body = toNativeString(winrt::to_string(texts.Item(1).InnerText()));
   } catch (const winrt::hresult_error&) {
     // Never let a WinRT failure cross the FFI boundary
   }
