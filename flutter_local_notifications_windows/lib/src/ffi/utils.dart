@@ -63,13 +63,30 @@ extension NativeNotificationDetailsUtils on Pointer<NativeNotificationDetails> {
   List<ActiveNotification> asActiveNotifications(int length) =>
       <ActiveNotification>[
         for (int index = 0; index < length; index++)
-          ActiveNotification(id: this[index].id),
+          ActiveNotification(
+            id: this[index].id,
+            title: this[index].title.toNullableDartString(),
+            body: this[index].body.toNullableDartString(),
+            payload: this[index].payload.toNullableDartString(),
+          ),
       ];
 
-  /// Parses this array os a list of [PendingNotificationRequest]s.
-  List<PendingNotificationRequest> asPendingRequests(int length) =>
-      <PendingNotificationRequest>[
+  /// Parses this array as a list of [WindowsPendingNotificationRequest]s.
+  List<WindowsPendingNotificationRequest> asPendingRequests(int length) =>
+      <WindowsPendingNotificationRequest>[
         for (int index = 0; index < length; index++)
-          PendingNotificationRequest(this[index].id, null, null, null),
+          WindowsPendingNotificationRequest(
+            this[index].id,
+            this[index].title.toNullableDartString(),
+            this[index].body.toNullableDartString(),
+            this[index].payload.toNullableDartString(),
+            scheduledDate: DateTime.fromMillisecondsSinceEpoch(
+              this[index].scheduledTime * 1000,
+            ),
+          ),
       ];
+}
+
+extension on Pointer<Utf8> {
+  String? toNullableDartString() => this == nullptr ? null : toDartString();
 }

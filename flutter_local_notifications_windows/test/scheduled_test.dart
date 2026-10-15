@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications_windows/flutter_local_notifications_windows.dart';
+import 'package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart';
 import 'package:test/test.dart';
 import 'package:timezone/data/latest_all.dart';
 import 'package:timezone/standalone.dart';
@@ -48,5 +49,35 @@ void main() => group('Schedules', () {
       ),
       throwsArgumentError,
     );
+  });
+
+  test('report their contents and time', () async {
+    final TZDateTime later = TZDateTime.now(
+      location,
+    ).add(const Duration(hours: 1));
+    await plugin.cancelAll();
+    await plugin.zonedSchedule(
+      id: 303,
+      title: 'Title',
+      body: 'Body',
+      scheduledDate: later,
+      payload: 'payload',
+    );
+    final List<PendingNotificationRequest> pending = await plugin
+        .pendingNotificationRequests();
+    expect(pending, hasLength(1));
+    final WindowsPendingNotificationRequest request =
+        pending.single as WindowsPendingNotificationRequest;
+    expect(request.id, 303);
+    expect(request.title, 'Title');
+    expect(request.body, 'Body');
+    expect(request.payload, 'payload');
+    // Scheduling has second resolution.
+    expect(
+      request.scheduledDate.difference(later).inSeconds.abs(),
+      lessThanOrEqualTo(1),
+    );
+    await plugin.cancel(id: 303);
+    expect(await countPending(), 0);
   });
 });

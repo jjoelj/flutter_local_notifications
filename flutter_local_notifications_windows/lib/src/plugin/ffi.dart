@@ -171,7 +171,7 @@ class FlutterLocalNotificationsWindows extends WindowsNotificationsBase {
         final List<ActiveNotification> result = array.asActiveNotifications(
           length.value,
         );
-        _bindings.freeDetailsArray(array);
+        _bindings.freeDetailsArray(array, length.value);
         return result;
       });
 
@@ -189,7 +189,7 @@ class FlutterLocalNotificationsWindows extends WindowsNotificationsBase {
     final List<PendingNotificationRequest> result = array.asPendingRequests(
       length.value,
     );
-    _bindings.freeDetailsArray(array);
+    _bindings.freeDetailsArray(array, length.value);
     return result;
   });
 

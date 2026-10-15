@@ -39,6 +39,18 @@ typedef struct NativeStringMap {
 /// Details about a notification.
 typedef struct NativeNotificationDetails {
   int id;
+
+  /// The notification's first text element, conventionally its title. Null if absent.
+  char* title;
+
+  /// The notification's second text element, conventionally its body. Null if absent.
+  char* body;
+
+  /// The notification's launch argument. Null if absent.
+  char* payload;
+
+  /// When a scheduled notification will be shown, in seconds since the epoch. 0 if not scheduled.
+  long long scheduledTime;
 } NativeNotificationDetails;
 
 /// How the app was launched, either by pressing on the notification or an action within it.
@@ -133,8 +145,8 @@ FFI_PLUGIN_EXPORT NativeNotificationDetails* getPendingNotifications(
   NativePlugin* plugin, int* size
 );
 
-/// Releases the memory associated with a [NativeNotificationDetails] array.
-FFI_PLUGIN_EXPORT void freeDetailsArray(NativeNotificationDetails* ptr);
+/// Releases the memory associated with a [NativeNotificationDetails] array of [size] elements.
+FFI_PLUGIN_EXPORT void freeDetailsArray(NativeNotificationDetails* ptr, int size);
 
 /// Releases the memory associated with a [NativeLaunchDetails].
 FFI_PLUGIN_EXPORT void freeLaunchDetails(NativeLaunchDetails details);
